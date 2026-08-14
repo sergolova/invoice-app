@@ -13,6 +13,8 @@ class StoreInvoiceRequest extends FormRequest
 
     public function rules(): array
     {
+        // There can't be a "status" key here, because that would allow you to create an "approved" account right away.
+        // "pending" status is default for column
         return [
             'number' => 'required|string|unique:invoices,number',
             'supplier_name' => 'required|string|max:255',
@@ -23,17 +25,15 @@ class StoreInvoiceRequest extends FormRequest
                 'required',
                 'numeric',
                 function ($attribute, $value, $fail) {
-                    $net = (float) $this->input('net_amount');
-                    $vat = (float) $this->input('vat_amount');
-                    if (abs((float)$value - ($net + $vat)) > 0.01) {
+                    $expectedGross = bcadd($this->input('net_amount'), $this->input('vat_amount'), 2);
+                    if (bccomp((string) $value, $expectedGross, 2) !== 0) {
                         $fail('Gross amount must equal Net amount + VAT amount.');
                     }
                 },
             ],
             'currency' => 'required|string|size:3',
             'issue_date' => 'required|date',
-            'due_date' => 'required|date|after_or_equal:issue_date',
-            'status' => 'nullable|in:pending,approved,rejected',
+            'due_date' => 'required|date|after_or_equal:issue_date'
         ];
     }
 }

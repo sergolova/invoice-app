@@ -20,4 +20,5 @@ export interface UpdateInvoiceDTO {
   net_amount: string
   vat_amount: string
   due_date: string
+  updated_at?: string
 }

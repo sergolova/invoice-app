@@ -14,15 +14,15 @@ class InvoiceFactory extends Factory
     {
         $net = fake()->randomFloat(2, 1000, 50000);
         $vat = round($net * 0.20, 2); // 20% VAT
+        $gross = round($net + $vat, 2);
 
         return [
-            'id'              => (string) Str::uuid(),
-            'number'          => 'INV-2026-' . fake()->unique()->numberBetween(100, 999),
+            'number'          => 'INV-2026-' . fake()->unique()->numberBetween(10000, 99999),
             'supplier_name'   => fake()->company(),
             'supplier_tax_id' => fake()->numerify('##########'),
             'net_amount'      => $net,
             'vat_amount'      => $vat,
-            'gross_amount'    => $net + $vat,
+            'gross_amount'    => $gross,
             'currency'        => 'UAH',
             'status'          => fake()->randomElement(['pending', 'approved', 'rejected']),
             'issue_date'      => fake()->dateTimeBetween('-1 month', 'now')->format('Y-m-d'),

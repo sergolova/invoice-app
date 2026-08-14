@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateInvoiceRequest;
 use App\Models\Invoice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
+use Symfony\Component\HttpFoundation\Response;
 
 class InvoiceController extends Controller
 {
@@ -20,9 +21,11 @@ class InvoiceController extends Controller
 
     public function store(StoreInvoiceRequest $request): JsonResponse
     {
-        $invoice = Invoice::create($request->validated());
+        $data = $request->validated();
+        $data['status'] = 'pending'; // Rewrite everything the client was able to send
+        $invoice = Invoice::create($data);
 
-        return response()->json(['data' => $invoice], 210);
+        return response()->json(['data' => $invoice], Response::HTTP_CREATED);
     }
 
     public function show(Invoice $invoice): JsonResponse
@@ -33,13 +36,14 @@ class InvoiceController extends Controller
     public function update(UpdateInvoiceRequest $request, Invoice $invoice)
     {
         if ($request->filled('updated_at')) {
+            // ! Potential bug in Prod: Optimistic locking and microseconds
             $clientUpdatedAt = Carbon::parse($request->input('updated_at'))->timestamp;
             $serverUpdatedAt = $invoice->updated_at->timestamp;
 
             if ($clientUpdatedAt !== $serverUpdatedAt) {
                 return response()->json([
                     'message' => 'Рахунок було змінено іншим користувачем. Оновіть сторінку, щоб отримати актуальні дані.'
-                ], 409); // HTTP 409 Conflict
+                ], Response::HTTP_CONFLICT);
             }
         }
 

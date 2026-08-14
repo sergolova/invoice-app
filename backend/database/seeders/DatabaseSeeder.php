@@ -9,6 +9,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        Invoice::factory(20)->create();
+        // Create seeds only if the table is empty
+        if (Invoice::count() === 0) {
+            Invoice::factory(20)->create();
+        }
     }
 }

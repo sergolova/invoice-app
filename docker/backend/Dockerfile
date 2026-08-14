@@ -29,5 +29,9 @@ RUN groupmod -g ${WWWGROUP} www-data 2>/dev/null || groupadd -g ${WWWGROUP} www-
 
 WORKDIR /var/www/backend
 
+COPY docker/backend/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["entrypoint.sh"]
 # Start the built-in Laravel server on port 8000 for local development
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

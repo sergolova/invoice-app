@@ -1,9 +1,32 @@
 import type { InvoiceStatus } from '~/types/invoice'
 
-export const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('uk-UA', { timeZone: 'UTC' })
-}
+/**
+ * Formats a calendar date (without a time). Used for: issue_date, due_date
+ * Example: "August 14, 2026"
+ */
+export const formatDate = (dateStr?: string | null): string => {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleDateString('uk-UA', {
+    timeZone: 'UTC'
+  });
+};
+
+/**
+ * Formats a date and time. Used for: created_at, updated_at
+ * Example: "August 14, 2026, 1:18 PM"
+ */
+export const formatDateTime = (dateStr?: string | null): string => {
+  if (!dateStr) return '-';
+
+  return new Date(dateStr).toLocaleString('uk-UA', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Kyiv', // Хардкодинг в рамках тестового завдання
+  });
+};
 
 export const getStatusBadgeClass = (status?: InvoiceStatus | string): string => {
   switch (status) {

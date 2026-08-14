@@ -17,8 +17,8 @@
       <div class="flex justify-between items-start border-b pb-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Рахунок № {{ invoice.number }}</h1>
-          <p class="text-sm text-gray-500">Створено: {{ formatDate(invoice.created_at) }} | Оновлено:
-            {{ formatDate(invoice.updated_at) }}</p>
+          <p class="text-sm text-gray-500">Створено: {{ formatDateTime(invoice.created_at) }} | Оновлено:
+            {{ formatDateTime(invoice.updated_at) }}</p>
         </div>
         <span :class="getStatusBadgeClass(invoice.status)" class="px-3 py-1 rounded-full text-sm font-semibold">
           {{ getStatusLabel(invoice.status) }}
@@ -405,6 +405,7 @@
       // - Видалення або архівування інвойсу іншим користувачем (404 Not Found)
       // - Зависання зовнішніх інтеграцій на бекенді (504 Gateway Timeout)
       // - Обрив інтернет-з'єднання в момент відправлення (Network Error)
+      // - непередбачуваний збій в БД. Треба ґарантувати, щоб користувач не побачив SQL-error
       // ...
 
       saveError.value =

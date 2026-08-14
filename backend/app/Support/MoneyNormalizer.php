@@ -4,13 +4,15 @@ namespace App\Support;
 
 class MoneyNormalizer
 {
+    private const int SCALE = 2;
+
     /**
-     * Converts any incoming string representing an amount of money into cents (int)
+     * Normalizes any monetary input to a canonical decimal string "12345.67"
      */
-    public static function toCents(mixed $value): int
+    public static function normalize(mixed $value): string
     {
         if ($value === null || $value === '') {
-            return 0;
+            return '0.00';
         }
 
         $raw = preg_replace('/\s+/u', '', (string) $value);
@@ -18,46 +20,27 @@ class MoneyNormalizer
         if (str_contains($raw, '.') && str_contains($raw, ',')) {
             $posDot = strpos($raw, '.');
             $posComma = strpos($raw, ',');
-
-            if ($posDot < $posComma) {
-                $raw = str_replace('.', '', $raw);
-            } else {
-                $raw = str_replace(',', '', $raw);
-            }
+            $raw = ($posDot < $posComma)
+                ? str_replace('.', '', $raw)
+                : str_replace(',', '', $raw);
         }
 
         $normalized = str_replace(',', '.', $raw);
-        $normalized = preg_replace('/[^0-9.-]/', '', $normalized);
+        $normalized = preg_replace('/[^0-9.\-]/', '', $normalized);
 
-        return (int) round(((float) $normalized) * 100);
+        // bcadd with 0 normalizes, then format to exactly 2 decimals
+        return bcadd($normalized, '0', self::SCALE);
     }
 
     /**
-     * Converts cents (int) to the formatted string "12345.67"
-     */
-    public static function fromCents(int $cents): string
-    {
-        return number_format($cents / 100, 2, '.', '');
-    }
-
-    /**
-     * Normalizes and formats any monetary value
-     */
-    public static function format(mixed $value): string
-    {
-        return self::fromCents(self::toCents($value));
-    }
-
-    /**
-     * Sums any number of monetary values without losing any cents
+     * Sums monetary values without floating-point precision loss
      */
     public static function sum(mixed ...$values): string
     {
-        $totalCents = 0;
+        $total = '0';
         foreach ($values as $value) {
-            $totalCents += self::toCents($value);
+            $total = bcadd($total, self::normalize($value), self::SCALE);
         }
-
-        return self::fromCents($totalCents);
+        return $total;
     }
 }
