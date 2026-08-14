@@ -132,20 +132,21 @@ cd invoice-app
 cp .env.example .env
 cp backend/.env.example backend/.env
 
-# 3. Запускаємо PostgreSQL (backend поки не чіпаємо)
+# 3. Запускаємо PostgreSQL
 docker compose up -d postgres
 
-# 4. Встановлюємо PHP-залежності всередині контейнера
-docker compose run --rm --no-deps backend composer install
+# 4. Збираємо образ і встановлюємо PHP-залежності
+docker compose build backend
+docker compose run --rm --entrypoint "" backend composer install
 
 # 5. Генеруємо APP_KEY
-docker compose run --rm --no-deps backend php artisan key:generate
+docker compose run --rm --entrypoint "" backend php artisan key:generate
 
 # 6. Запускаємо всі сервіси
 docker compose up -d
 ```
 
-На цьому етапі `entrypoint.sh` автоматично виконає міграції та засіє 20 тестових рахунків.
+На кроці 6 `entrypoint.sh` автоматично виконає міграції та засіє 20 тестових рахунків.
 
 Frontend (`npm install` + `nuxt dev`) стартує автоматично через CMD у Dockerfile.
 
