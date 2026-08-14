@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 class InvoiceFactory extends Factory
 {
@@ -12,12 +11,15 @@ class InvoiceFactory extends Factory
 
     public function definition(): array
     {
+        $issueDate = fake()->dateTimeBetween('start of this year', 'now');
+        $dueDate = fake()->dateTimeBetween($issueDate, '+1 month');
+
         $net = fake()->randomFloat(2, 1000, 50000);
-        $vat = round($net * 0.20, 2); // 20% VAT
+        $vat = round($net * 0.20, 2);
         $gross = round($net + $vat, 2);
 
         return [
-            'number'          => 'INV-2026-' . fake()->unique()->numberBetween(10000, 99999),
+            'number'          => 'INV-' . $issueDate->format('Y-md') . '-' . fake()->unique()->numerify('###'),
             'supplier_name'   => fake()->company(),
             'supplier_tax_id' => fake()->numerify('##########'),
             'net_amount'      => $net,
@@ -25,8 +27,8 @@ class InvoiceFactory extends Factory
             'gross_amount'    => $gross,
             'currency'        => 'UAH',
             'status'          => fake()->randomElement(['pending', 'approved', 'rejected']),
-            'issue_date'      => fake()->dateTimeBetween('-1 month', 'now')->format('Y-m-d'),
-            'due_date'        => fake()->dateTimeBetween('now', '+1 month')->format('Y-m-d'),
+            'issue_date'      => $issueDate->format('Y-m-d'),
+            'due_date'        => $dueDate->format('Y-m-d'),
         ];
     }
 }

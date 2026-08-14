@@ -14,7 +14,7 @@ class InvoiceController extends Controller
 {
     public function index(): JsonResponse
     {
-        $invoices = Invoice::orderBy('created_at', 'desc')->get();
+        $invoices = Invoice::orderByDesc('created_at')->orderBy('number')->get();
 
         return response()->json(['data' => $invoices]);
     }

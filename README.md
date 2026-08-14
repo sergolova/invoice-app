@@ -160,7 +160,7 @@ Frontend (`npm install` + `nuxt dev`) стартує автоматично че
 ### Подальші запуски
 
 ```bash
-docker compose up -d
+docker compose up -d           
 ```
 
 ### Корисні команди
