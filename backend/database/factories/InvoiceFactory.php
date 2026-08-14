@@ -11,7 +11,7 @@ class InvoiceFactory extends Factory
 
     public function definition(): array
     {
-        $issueDate = fake()->dateTimeBetween('start of this year', 'now');
+        $issueDate = fake()->dateTimeBetween(date('Y-01-01'), 'now');
         $dueDate = fake()->dateTimeBetween($issueDate, '+1 month');
 
         $net = fake()->randomFloat(2, 1000, 50000);

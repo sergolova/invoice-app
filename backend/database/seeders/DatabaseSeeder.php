@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
 
         // Generate random dates spread across the current year
         $dates = collect(range(1, $count))
-            ->map(fn () => fake()->dateTimeBetween('start of this year', 'now'))
+            ->map(fn () => fake()->dateTimeBetween(date('Y-01-01'), 'now'))
             ->sort()
             ->values();
 
