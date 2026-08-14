@@ -17,10 +17,11 @@
       <div class="flex justify-between items-start border-b pb-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Рахунок № {{ invoice.number }}</h1>
-          <p class="text-sm text-gray-500">Створено: {{ formatDate(invoice.created_at) }} | Оновлено: {{ formatDate(invoice.updated_at) }}</p>
+          <p class="text-sm text-gray-500">Створено: {{ formatDate(invoice.created_at) }} | Оновлено:
+            {{ formatDate(invoice.updated_at) }}</p>
         </div>
         <span :class="getStatusBadgeClass(invoice.status)" class="px-3 py-1 rounded-full text-sm font-semibold">
-          {{ invoice.status }}
+          {{ getStatusLabel(invoice.status) }}
         </span>
       </div>
 
@@ -45,8 +46,10 @@
       </div>
 
       <!-- Warning if non-editable -->
-      <div v-if="invoice.status !== 'pending'" class="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-sm">
-        Редагування заблоковано, оскільки рахунок має статус <strong>{{ invoice.status }}</strong> (доступно лише для pending).
+      <div v-if="invoice.status !== 'pending'"
+           class="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-sm">
+        Редагування заблоковано, оскільки рахунок має статус <strong>{{ getStatusLabel(invoice.status) }}</strong>
+        (доступно лише для {{ getStatusLabel('pending') }}).
       </div>
 
       <!-- Edit Form -->
@@ -54,66 +57,94 @@
         <h2 class="text-lg font-semibold text-gray-800">Редагування фінансових даних</h2>
 
         <div class="grid grid-cols-3 gap-4">
+          <!-- Net Amount -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Сума без ПДВ (Net)</label>
             <input
-              v-model.number="form.net_amount"
+              v-model="netAmount"
+              v-bind="netAmountProps"
               :disabled="invoice.status !== 'pending'"
-              type="number" step="0.01" min="0.01"
+              type="text"
+              inputmode="decimal" step="0.01"
               class="w-full border rounded-md p-2 disabled:bg-gray-100 disabled:text-gray-500"
-              required
+              :class="{ 'border-red-500': errors.net_amount }"
             />
+            <span v-if="errors.net_amount" class="text-xs text-red-600 mt-1 block">{{ errors.net_amount }}</span>
           </div>
 
+          <!-- VAT Amount -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">ПДВ (VAT)</label>
             <input
-              v-model.number="form.vat_amount"
+              v-model="vatAmount"
+              v-bind="vatAmountProps"
               :disabled="invoice.status !== 'pending'"
-              type="number" step="0.01" min="0"
+              type="text"
+              inputmode="decimal"
               class="w-full border rounded-md p-2 disabled:bg-gray-100 disabled:text-gray-500"
-              required
+              :class="{ 'border-red-500': errors.vat_amount }"
             />
+            <span v-if="errors.vat_amount" class="text-xs text-red-600 mt-1 block">{{ errors.vat_amount }}</span>
           </div>
 
+          <!-- Gross Amount -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Загальна сума (Gross)</label>
             <input
-              :value="calculatedGross"
-              type="number" step="0.01"
+              :value="grossAmount"
+              type="text"
+              inputmode="decimal"
               class="w-full border rounded-md p-2 bg-gray-100 font-bold text-gray-800"
               disabled
             />
+            <span v-if="errors.gross_amount" class="text-red-500 text-xs mt-1 block">
+    {{ errors.gross_amount }}
+  </span>
           </div>
         </div>
 
+        <!-- Due Date -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Сплатити до (Due Date)</label>
           <input
-            v-model="form.due_date"
+            v-model="dueDate"
+            v-bind="dueDateProps"
             :disabled="invoice.status !== 'pending'"
+            :min="invoice.issue_date"
             type="date"
             class="w-full border rounded-md p-2 disabled:bg-gray-100 disabled:text-gray-500"
-            required
+            :class="{ 'border-red-500': errors.due_date }"
           />
+          <span v-if="errors.due_date" class="text-xs text-red-600 mt-1 block">{{ errors.due_date }}</span>
         </div>
 
+        <!-- System Messages -->
         <div v-if="saveError" class="text-red-600 text-sm">
           {{ saveError }}
         </div>
 
-        <div v-if="saveSuccess" class="text-green-600 text-sm">
+        <div v-if="saveSuccess && !isGrossAdjusted" class="p-3 bg-green-50 text-green-700 rounded-md text-sm">
           Зміни успішно збережено!
         </div>
 
+        <div v-if="saveSuccess && isGrossAdjusted"
+             class="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-sm space-y-1">
+          <div class="font-semibold">Зміни збережено, але підсумкову суму автоматично скориговано сервером.</div>
+          <div>
+            Загальна сума змінена з <span class="line-through">{{ adjustedGrossDetails.was }}</span> на
+            <strong>{{ adjustedGrossDetails.became }}</strong> відповідно до правил розрахунку ПДВ.
+          </div>
+        </div>
+
+        <!-- Actions -->
         <div class="flex justify-end">
           <button
             v-if="invoice.status === 'pending'"
-            :disabled="isSaving"
             type="submit"
-            class="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            :disabled="isSubmitting || !meta.valid || !meta.dirty"
+            class="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {{ isSaving ? 'Збереження...' : 'Зберегти зміни' }}
+            {{ isSubmitting ? 'Збереження...' : 'Зберегти зміни' }}
           </button>
         </div>
       </form>
@@ -122,75 +153,263 @@
 </template>
 
 <script setup lang="ts">
-  import type { Invoice, InvoiceStatus } from '~/types/invoice'
+  import { useForm } from 'vee-validate'
+  import { toTypedSchema } from '@vee-validate/zod'
+  import * as z from 'zod'
+  import type { Invoice, UpdateInvoiceDTO } from '~/types/invoice'
+  import {
+    formatMoneyForApi,
+    formatMoneyFromMinor,
+    parseApiMoneyToMinor,
+    parseMoneyToMinor,
+  } from '~/utils/moneyNormalizer'
+
+  // ---------------------------------------------------------
+  // Setup & Constants
+  // ---------------------------------------------------------
 
   const route = useRoute()
-  const invoiceId = route.params.id
+  const invoiceId = route.params.id as string
+  const appLocale = 'uk-UA'
+  const MAX_MONEY_MINOR = 999999999999n
 
-  const { data, pending, error, refresh } = await useApi<{ data: Invoice }>(`/invoices/${invoiceId}`)
+  // ---------------------------------------------------------
+  // API Data Fetching
+  // ---------------------------------------------------------
 
+  const { data, pending, error } = await useApi<{ data: Invoice }>(`/invoices/${invoiceId}`)
   const invoice = computed(() => data.value?.data)
 
-  const form = reactive({
-    net_amount: 0,
-    vat_amount: 0,
-    due_date: ''
+  // ---------------------------------------------------------
+  // Validation Schemas
+  // ---------------------------------------------------------
+
+  const moneySchema = z
+    .string()
+    .trim()
+    .min(1, 'Вкажіть суму')
+    .refine(
+      (value) => parseMoneyToMinor(value, appLocale) !== null,
+      'Введіть коректну суму',
+    )
+    .refine(
+      (value) => {
+        const minor = parseMoneyToMinor(value, appLocale)
+        return minor !== null && minor <= MAX_MONEY_MINOR
+      },
+      'Сума не може перевищувати 9 999 999 999.99',
+    )
+
+  const netAmountSchema = moneySchema
+    .refine(
+      (value) => {
+        const minor = parseMoneyToMinor(value, appLocale)
+
+        return minor !== null && minor > 0n
+      },
+      'Сума має бути більше 0',
+    )
+    .transform((value) => {
+      const minor = parseMoneyToMinor(value, appLocale)!
+
+      return formatMoneyForApi(minor)
+    })
+
+  const vatAmountSchema = moneySchema
+    .refine(
+      (value) => {
+        const minor = parseMoneyToMinor(value, appLocale)
+
+        return minor !== null && minor >= 0n
+      },
+      'ПДВ не може бути від’ємним',
+    )
+    .transform((value) => {
+      const minor = parseMoneyToMinor(value, appLocale)!
+
+      return formatMoneyForApi(minor)
+    })
+
+  const grossAmountSchema = moneySchema.transform((value) => {
+    const minor = parseMoneyToMinor(value, appLocale)!
+
+    return formatMoneyForApi(minor)
   })
 
-  const isSaving = ref(false)
+  const invoiceSchema = z
+    .object({
+      net_amount: netAmountSchema,
+      vat_amount: vatAmountSchema,
+      gross_amount: grossAmountSchema,
+      updated_at: z.string().optional(),
+      due_date: z
+        .string()
+        .min(1, 'Укажіть дату сплати'),
+    })
+    .superRefine((values, ctx) => {
+      const net = parseApiMoneyToMinor(values.net_amount)
+      const vat = parseApiMoneyToMinor(values.vat_amount)
+      const gross = parseApiMoneyToMinor(values.gross_amount)
+
+      if (net === null || vat === null || gross === null) return
+
+      if (gross !== net + vat) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['gross_amount'],
+          message: 'Загальна сума має дорівнювати сумі без ПДВ + ПДВ',
+        })
+      }
+    })
+
+  // ---------------------------------------------------------
+  // Form Initialization
+  // ---------------------------------------------------------
+
+  const {
+    defineField,
+    errors,
+    handleSubmit,
+    setValues,
+    setFieldValue,
+    isSubmitting,
+    meta,
+  } = useForm({
+    validationSchema: toTypedSchema(invoiceSchema),
+    initialValues: {
+      net_amount: '',
+      vat_amount: '',
+      gross_amount: '',
+      due_date: '',
+    },
+  })
+
+  const [netAmount, netAmountProps] = defineField('net_amount')
+  const [vatAmount, vatAmountProps] = defineField('vat_amount')
+  const [grossAmount] = defineField('gross_amount')
+  const [dueDate, dueDateProps] = defineField('due_date')
+
+  // ---------------------------------------------------------
+  // Component State
+  // ---------------------------------------------------------
+
   const saveError = ref('')
   const saveSuccess = ref(false)
+  const isGrossAdjusted = ref(false)
+  const adjustedGrossDetails = ref({ was: '', became: '' })
 
-  // Init form data when invoice is loaded
-  watch(invoice, (inv) => {
-    if (inv) {
-      form.net_amount = Number(inv.net_amount)
-      form.vat_amount = Number(inv.vat_amount)
-      form.due_date = inv.due_date
-    }
-  }, { immediate: true })
+  // ---------------------------------------------------------
+  // Sync Form with Loaded Invoice
+  // ---------------------------------------------------------
 
+  watch(
+    invoice,
+    (inv) => {
+      if (!inv) return
+
+      const net = parseApiMoneyToMinor(inv.net_amount)
+      const vat = parseApiMoneyToMinor(inv.vat_amount)
+      const gross = parseApiMoneyToMinor(inv.gross_amount)
+
+      setValues({
+        net_amount:
+          net !== null
+            ? formatMoneyFromMinor(net, appLocale)
+            : '',
+
+        vat_amount:
+          vat !== null
+            ? formatMoneyFromMinor(vat, appLocale)
+            : '',
+
+        gross_amount:
+          gross !== null
+            ? formatMoneyFromMinor(gross, appLocale)
+            : '',
+
+        due_date: inv.due_date || '',
+        updated_at: inv.updated_at,
+      })
+    },
+    { immediate: true },
+  )
+
+  // ---------------------------------------------------------
   // Auto-calculate Gross Amount
-  const calculatedGross = computed(() => {
-    const net = Number(form.net_amount) || 0
-    const vat = Number(form.vat_amount) || 0
-    return (net + vat).toFixed(2)
-  })
+  // ---------------------------------------------------------
 
-  const saveInvoice = async () => {
+  watch(
+    [netAmount, vatAmount],
+    ([net, vat]) => {
+      const n = parseMoneyToMinor(net, appLocale)
+      const v = parseMoneyToMinor(vat, appLocale)
+
+      if (n === null || v === null) {
+        setFieldValue('gross_amount', '', true)
+        return
+      }
+
+      setFieldValue(
+        'gross_amount',
+        formatMoneyFromMinor(n + v, appLocale),
+        true,
+      )
+    })
+
+  // ---------------------------------------------------------
+  // Submit Handler
+  // ---------------------------------------------------------
+
+  const saveInvoice = handleSubmit(async (values) => {
     saveError.value = ''
     saveSuccess.value = false
-    isSaving.value = true
+    isGrossAdjusted.value = false
+
+    // Let's save what the front end was thinking before sending the request
+    const clientGross = values.gross_amount
 
     try {
-      await useApi(`/invoices/${invoiceId}`, {
+      const body: UpdateInvoiceDTO = values
+
+      // We retrieve the updated invoice object directly from the backend response
+      const response = await $api<{ data: Invoice }>(`/invoices/${invoiceId}`, {
         method: 'PUT',
-        body: {
-          net_amount: form.net_amount,
-          vat_amount: form.vat_amount,
-          gross_amount: Number(calculatedGross.value),
-          due_date: form.due_date
-        }
+        body,
       })
+
+      const serverGross = response.data.gross_amount
+
+      // A rule of thumb in financial system UX: never change numbers without the user's knowledge!
+      // Checking for discrepancies
+      if (clientGross !== serverGross) {
+        isGrossAdjusted.value = true
+        adjustedGrossDetails.value = {
+          was: clientGross,
+          became: serverGross,
+        }
+      }
+
+      // Updating the data
+      data.value = response
+
       saveSuccess.value = true
-      await refresh()
     } catch (err: any) {
-      saveError.value = err.data?.message || 'Не вдалося зберегти оновлення'
-    } finally {
-      isSaving.value = false
-    }
-  }
+      // 409 Conflict — Someone saved it before we did
+      if (err.status === 409 || err.statusCode === 409) {
+        saveError.value = 'Ці дані застаріли! Інший користувач уже змінив цей обліковий запис. Будь ласка, оновіть сторінку.'
+        return
+      }
 
-  const getStatusBadgeClass = (status?: InvoiceStatus) => {
-    switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800'
-      case 'rejected': return 'bg-red-100 text-red-800'
-      default: return 'bg-yellow-100 text-yellow-800'
-    }
-  }
+      //  тут також слід врахувати безліч інших малоймовірних сценаріїв:
+      // - Втрата сесії або токена під час введення даних (401 Unauthorized)
+      // - Видалення або архівування інвойсу іншим користувачем (404 Not Found)
+      // - Зависання зовнішніх інтеграцій на бекенді (504 Gateway Timeout)
+      // - Обрив інтернет-з'єднання в момент відправлення (Network Error)
+      // ...
 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '-'
-    return new Date(dateStr).toLocaleDateString('uk-UA')
-  }
+      saveError.value =
+        err.data?.message ||
+        'Не вдалося зберегти оновлення'
+    }
+  })
 </script>

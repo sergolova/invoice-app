@@ -45,7 +45,7 @@
           </td>
           <td class="px-6 py-4 whitespace-nowrap">
               <span :class="getStatusBadgeClass(invoice.status)" class="px-2.5 py-0.5 rounded-full text-xs font-medium">
-                {{ invoice.status }}
+                {{ getStatusLabel(invoice.status) }}
               </span>
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -64,22 +64,11 @@
 </template>
 
 <script setup lang="ts">
-  import type { Invoice, InvoiceStatus } from '~/types/invoice'
+  import type { Invoice } from '~/types/invoice'
+  import { formatDate } from "~/utils/formatters.ts";
 
   const { data, pending, error, refresh } = await useApi<{ data: Invoice[] }>(`/invoices`)
 
   const invoices = computed(() => data.value?.data || [])
 
-  const getStatusBadgeClass = (status: InvoiceStatus) => {
-    switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800'
-      case 'rejected': return 'bg-red-100 text-red-800'
-      default: return 'bg-yellow-100 text-yellow-800'
-    }
-  }
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-'
-    return new Date(dateStr).toLocaleDateString('uk-UA', { timeZone: 'UTC' })
-  }
 </script>

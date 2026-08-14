@@ -5,9 +5,9 @@ export interface Invoice {
   number: string
   supplier_name: string
   supplier_tax_id: string
-  net_amount: string | number
-  vat_amount: string | number
-  gross_amount: string | number
+  net_amount: string
+  vat_amount: string
+  gross_amount: string
   currency: string
   status: InvoiceStatus
   issue_date: string
@@ -17,8 +17,7 @@ export interface Invoice {
 }
 
 export interface UpdateInvoiceDTO {
-  net_amount: number
-  vat_amount: number
-  gross_amount: number
+  net_amount: string
+  vat_amount: string
   due_date: string
 }

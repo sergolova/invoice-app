@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\MoneyNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateInvoiceRequest extends FormRequest
@@ -13,22 +14,25 @@ class UpdateInvoiceRequest extends FormRequest
         return $invoice && $invoice->status === 'pending';
     }
 
+    protected function prepareForValidation(): void
+    {
+        // Never Trust Client Input: We only accept net_amount and vat_amount, calculating gross_amount HERE
+        if ($this->filled(['net_amount', 'vat_amount'])) {
+            $this->merge([
+                'net_amount'   => MoneyNormalizer::format($this->net_amount),
+                'vat_amount'   => MoneyNormalizer::format($this->vat_amount),
+                'gross_amount' => MoneyNormalizer::sum($this->net_amount, $this->vat_amount),
+            ]);
+        }
+    }
+
     public function rules(): array
     {
         return [
-            'net_amount' => 'required|numeric|gt:0',
-            'vat_amount' => 'required|numeric|gte:0',
+            'net_amount'   => 'required|numeric|gt:0|max:9999999999.99',
+            'vat_amount'   => 'required|numeric|gte:0|max:9999999999.99',
+            'gross_amount' => 'sometimes|numeric|max:9999999999.99',
             'due_date' => 'required|date|after_or_equal:issue_date',
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        // Automatically recalculate `gross_amount` when updating
-        if ($this->has(['net_amount', 'vat_amount'])) {
-            $this->merge([
-                'gross_amount' => (float)$this->net_amount + (float)$this->vat_amount,
-            ]);
-        }
     }
 }
