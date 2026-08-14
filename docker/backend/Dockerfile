@@ -29,7 +29,7 @@ RUN groupmod -g ${WWWGROUP} www-data 2>/dev/null || groupadd -g ${WWWGROUP} www-
 
 WORKDIR /var/www/backend
 
-COPY docker/backend/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["entrypoint.sh"]
